@@ -59,16 +59,12 @@ def is_muted(user_id: int) -> bool:
         return row is not None
 
 
-def get_muted_user(user_id: int):
-    with get_connection() as connection:
-        return connection.execute(
-            "SELECT * FROM muted_users WHERE user_id = ?",
-            (user_id,),
-        ).fetchone()
-
-
 def get_all_muted_users():
     with get_connection() as connection:
         return connection.execute(
-            "SELECT * FROM muted_users ORDER BY created_at DESC"
+            """
+            SELECT user_id, username, display_name, created_at
+            FROM muted_users
+            ORDER BY created_at DESC
+            """
         ).fetchall()
