@@ -2,6 +2,8 @@ import os
 
 from telethon import TelegramClient, events
 
+from app.user.moderation import mute, check_muted
+
 
 API_ID = int(os.environ["API_ID"])
 API_HASH = os.environ["API_HASH"]
@@ -9,29 +11,87 @@ API_HASH = os.environ["API_HASH"]
 client = TelegramClient("special_user", API_ID, API_HASH)
 
 
-@client.on(events.NewMessage(incoming=True))
-async def incoming_message(event):
-    sender = await event.get_sender()
-
-    if sender is None:
+@client.on(events.NewMessage)
+async def message_handler(event):
+    # تجاهل رسائل المجموعات والقنوات حاليًا
+    if not event.is_private:
         return
 
-    name = getattr(sender, "first_name", None) or getattr(sender, "title", None) or "Unknown"
-    username = getattr(sender, "username", None)
-    user_id = sender.id
+    # ---------------------------------
+    # أوامر الحساب الشخصي
+    # ---------------------------------
+    if event.out:
+        text = (event.raw_text or "").strip()
 
-    print(
-        "\n📩 رسالة واردة"
-        f"\nالاسم: {name}"
-        f"\nUsername: @{username}" if username else ""
-    )
+        if text == "كتم":
+            if not event.is_reply:
+                print("⚠️ استخدم «كتم» بالرد على رسالة الشخص.")
+                return
 
-    print(f"ID: {user_id}")
+            replied_message = await event.get_reply_message()
 
-    if event.raw_text:
-        print(f"النص: {event.raw_text}")
-    else:
-        print("المحتوى: رسالة بدون نص")
+            if not replied_message:
+                return
+
+            target = await replied_message.get_sender()
+
+            if not target:
+                return
+
+            username = getattr(target, "username", None)
+            display_name = (
+                getattr(target, "first_name", None)
+                or getattr(target, "title", None)
+                or "Unknown"
+            )
+
+            mute(
+                user_id=target.id,
+                username=username,
+                display_name=display_name,
+            )
+
+            print("\n🔇 تم كتم المستخدم")
+            print(f"الاسم: {display_name}")
+            print(f"ID: {target.id}")
+
+            return
+
+    # ---------------------------------
+    # الرسائل الواردة
+    # ---------------------------------
+    if event.incoming:
+        sender = await event.get_sender()
+
+        if sender is None:
+            return
+
+        user_id = sender.id
+
+        name = (
+            getattr(sender, "first_name", None)
+            or getattr(sender, "title", None)
+            or "Unknown"
+        )
+
+        username = getattr(sender, "username", None)
+
+        print("\n📩 رسالة واردة")
+        print(f"الاسم: {name}")
+        print(f"Username: @{username}" if username else "Username: لا يوجد")
+        print(f"ID: {user_id}")
+
+        if event.raw_text:
+            print(f"النص: {event.raw_text}")
+        else:
+            print("المحتوى: رسالة بدون نص")
+
+        # ---------------------------------
+        # فحص الكتم
+        # ---------------------------------
+        if check_muted(user_id):
+            print("🔇 المستخدم مكتوم.")
+            return
 
 
 async def main():
