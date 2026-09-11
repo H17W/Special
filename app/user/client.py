@@ -60,8 +60,9 @@ async def message_handler(event):
     # ---------------------------------
     # الرسائل الواردة
     # ---------------------------------
-    if event.incoming:
-        sender = await event.get_sender()
+    if not event.out:
+    sender = await event.get_sender()
+
 
         if sender is None:
             return
