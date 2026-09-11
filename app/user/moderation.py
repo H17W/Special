@@ -1,7 +1,8 @@
 from app.core.database import (
+    get_all_muted_users,
+    is_muted,
     mute_user,
     unmute_user,
-    is_muted,
 )
 
 
@@ -19,3 +20,7 @@ def unmute(user_id: int) -> bool:
 
 def check_muted(user_id: int) -> bool:
     return is_muted(user_id)
+
+
+def muted_users():
+    return get_all_muted_users()
