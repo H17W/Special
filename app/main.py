@@ -5,7 +5,7 @@ from aiogram import Bot, Dispatcher
 from app.core.config import BOT_TOKEN
 from app.bot.handlers import router as handlers_router
 from app.bot.callbacks import router as callbacks_router
-from app.user.client import client as user_client
+from app.user.client import start_user_client
 
 
 async def run_bot():
@@ -23,22 +23,10 @@ async def run_bot():
     await dp.start_polling(bot)
 
 
-async def run_user_client():
-    await user_client.start()
-
-    me = await user_client.get_me()
-
-    print("🟢 Special User Automation يعمل")
-    print(f"الحساب: {me.first_name}")
-    print(f"ID: {me.id}")
-
-    await user_client.run_until_disconnected()
-
-
 async def main():
     await asyncio.gather(
         run_bot(),
-        run_user_client(),
+        start_user_client(),
     )
 
 
