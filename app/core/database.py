@@ -26,7 +26,11 @@ def init_database():
         connection.commit()
 
 
-def mute_user(user_id: int, username: str | None, display_name: str | None):
+def mute_user(
+    user_id: int,
+    username: str | None,
+    display_name: str | None,
+):
     with get_connection() as connection:
         connection.execute(
             """
