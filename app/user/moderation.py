@@ -6,7 +6,11 @@ from app.core.database import (
 )
 
 
-def mute(user_id: int, username: str | None, display_name: str | None):
+def mute(
+    user_id: int,
+    username: str | None,
+    display_name: str | None,
+):
     mute_user(
         user_id=user_id,
         username=username,
