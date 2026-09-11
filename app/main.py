@@ -2,9 +2,9 @@ import asyncio
 
 from aiogram import Bot, Dispatcher
 
-from core.config import BOT_TOKEN
-from bot.handlers import router as handlers_router
-from bot.callbacks import router as callbacks_router
+from app.core.config import BOT_TOKEN
+from app.bot.handlers import router as handlers_router
+from app.bot.callbacks import router as callbacks_router
 
 
 async def main():
@@ -12,7 +12,6 @@ async def main():
         raise RuntimeError("BOT_TOKEN is not configured.")
 
     bot = Bot(token=BOT_TOKEN)
-
     dp = Dispatcher()
 
     dp.include_router(handlers_router)
