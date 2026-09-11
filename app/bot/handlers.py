@@ -15,13 +15,18 @@ waiting_for_unmute = set()
 
 
 def is_admin(message: Message) -> bool:
-    return ADMIN_ID and str(message.from_user.id) == str(ADMIN_ID)
+    return (
+        ADMIN_ID
+        and str(message.from_user.id) == str(ADMIN_ID)
+    )
 
 
 @router.message(CommandStart())
 async def start_handler(message: Message):
     if not is_admin(message):
-        await message.answer("⛔ غير مصرح لك باستخدام هذا البوت.")
+        await message.answer(
+            "⛔ غير مصرح لك باستخدام هذا البوت."
+        )
         return
 
     await message.answer(
@@ -45,8 +50,7 @@ async def text_handler(message: Message):
             target_id = int(message.text.strip())
         except (ValueError, AttributeError):
             await message.answer(
-                "❌ المعرف غير صحيح.\n\n"
-                "أرسل Telegram ID رقمي فقط."
+                "❌ أرسل Telegram ID رقمي فقط."
             )
             return
 
@@ -57,7 +61,7 @@ async def text_handler(message: Message):
         )
 
         await message.answer(
-            "🔇 تم كتم المستخدم.\n\n"
+            "🔇 تم كتم المستخدم بنجاح.\n\n"
             f"ID: {target_id}",
             reply_markup=automation_menu(),
         )
@@ -70,8 +74,7 @@ async def text_handler(message: Message):
             target_id = int(message.text.strip())
         except (ValueError, AttributeError):
             await message.answer(
-                "❌ المعرف غير صحيح.\n\n"
-                "أرسل Telegram ID رقمي فقط."
+                "❌ أرسل Telegram ID رقمي فقط."
             )
             return
 
@@ -79,12 +82,12 @@ async def text_handler(message: Message):
 
         if removed:
             text = (
-                "🔊 تم إلغاء كتم المستخدم.\n\n"
+                "🔊 تم إلغاء كتم المستخدم بنجاح.\n\n"
                 f"ID: {target_id}"
             )
         else:
             text = (
-                "ℹ️ هذا المستخدم غير موجود في قائمة المكتومين.\n\n"
+                "ℹ️ المستخدم غير موجود في قائمة المكتومين.\n\n"
                 f"ID: {target_id}"
             )
 
