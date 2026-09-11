@@ -1,17 +1,13 @@
-import os
-
 from telethon import TelegramClient, events
 
+from app.core.config import API_ID, API_HASH
 from app.core.database import init_database
 from app.user.moderation import check_muted
 
 
-API_ID = int(os.environ["API_ID"])
-API_HASH = os.environ["API_HASH"]
-
 client = TelegramClient(
     "special_user",
-    API_ID,
+    int(API_ID),
     API_HASH,
 )
 
@@ -26,9 +22,7 @@ async def incoming_message(event):
     if sender is None:
         return
 
-    user_id = sender.id
-
-    if not check_muted(user_id):
+    if not check_muted(sender.id):
         return
 
     try:
@@ -37,17 +31,15 @@ async def incoming_message(event):
         pass
 
 
-async def main():
+async def start_user_client():
     init_database()
+
+    await client.start()
 
     me = await client.get_me()
 
     print("🟢 Special User Automation يعمل")
     print(f"الحساب: {me.first_name}")
     print(f"ID: {me.id}")
-    print("في انتظار الرسائل...")
 
-
-with client:
-    client.loop.run_until_complete(main())
-    client.run_until_disconnected()
+    await client.run_until_disconnected()
