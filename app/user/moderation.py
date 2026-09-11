@@ -8,8 +8,8 @@ from app.core.database import (
 
 def mute(
     user_id: int,
-    username: str | None,
-    display_name: str | None,
+    username: str | None = None,
+    display_name: str | None = None,
 ):
     mute_user(
         user_id=user_id,
