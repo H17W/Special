@@ -36,3 +36,22 @@ def main_menu() -> InlineKeyboardMarkup:
             ],
         ]
     )
+
+
+def automation_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="👥 المكتومون",
+                    callback_data="muted_list",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔙 رجوع",
+                    callback_data="main_menu",
+                )
+            ],
+        ]
+    )
