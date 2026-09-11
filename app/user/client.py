@@ -2,7 +2,13 @@ import os
 
 from telethon import TelegramClient, events
 
-from app.user.moderation import mute, check_muted
+from app.core.database import init_database
+from app.user.moderation import (
+    check_muted,
+    mute,
+    muted_users,
+    unmute,
+)
 
 
 API_ID = int(os.environ["API_ID"])
@@ -13,16 +19,18 @@ client = TelegramClient("special_user", API_ID, API_HASH)
 
 @client.on(events.NewMessage)
 async def message_handler(event):
-    # نعمل على الخاص فقط حاليًا
     if not event.is_private:
         return
 
     # ==============================
-    # الرسائل التي يرسلها حسابك
+    # أوامر الحساب الشخصي
     # ==============================
     if event.out:
         text = (event.raw_text or "").strip()
 
+        # ------------------------------
+        # كتم
+        # ------------------------------
         if text == "كتم":
             if not event.is_reply:
                 print("⚠️ استخدم «كتم» بالرد على رسالة الشخص.")
@@ -56,6 +64,66 @@ async def message_handler(event):
             print(f"الاسم: {display_name}")
             print(f"ID: {target.id}")
 
+            return
+
+        # ------------------------------
+        # إلغاء الكتم
+        # ------------------------------
+        if text == "الغاء الكتم" or text == "إلغاء الكتم":
+            if not event.is_reply:
+                print("⚠️ استخدم «إلغاء الكتم» بالرد على رسالة الشخص.")
+                return
+
+            replied_message = await event.get_reply_message()
+
+            if not replied_message:
+                return
+
+            target = await replied_message.get_sender()
+
+            if not target:
+                return
+
+            removed = unmute(target.id)
+
+            if removed:
+                print("\n🔊 تم إلغاء كتم المستخدم")
+                print(f"ID: {target.id}")
+            else:
+                print("\nℹ️ المستخدم غير موجود في قائمة المكتومين.")
+
+            return
+
+        # ------------------------------
+        # قائمة المكتومين
+        # ------------------------------
+        if text == "المكتومين":
+            users = muted_users()
+
+            print("\n📋 قائمة المكتومين")
+
+            if not users:
+                print("لا يوجد مستخدمون مكتومون.")
+                return
+
+            for user in users:
+                name = user["display_name"] or "Unknown"
+                username = user["username"]
+
+                if username:
+                    print(
+                        f"- {name} | "
+                        f"@{username} | "
+                        f"ID: {user['user_id']}"
+                    )
+                else:
+                    print(
+                        f"- {name} | "
+                        f"ID: {user['user_id']}"
+                    )
+
+            return
+
         return
 
     # ==============================
@@ -87,7 +155,7 @@ async def message_handler(event):
         print("المحتوى: رسالة بدون نص")
 
     # ==============================
-    # فحص الكتم وحذف الرسالة
+    # المستخدم المكتوم
     # ==============================
     if check_muted(user_id):
         print("🔇 المستخدم مكتوم.")
@@ -102,6 +170,8 @@ async def message_handler(event):
 
 
 async def main():
+    init_database()
+
     me = await client.get_me()
 
     print("🟢 Special User Automation يعمل")
