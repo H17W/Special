@@ -9,6 +9,8 @@ from .keyboards import (
     main_menu,
     automation_menu,
     back_to_automation,
+    private_menu,
+    settings_menu,
 )
 
 
@@ -23,8 +25,8 @@ def is_admin(callback: CallbackQuery) -> bool:
     )
 
 
-@router.callback_query()
-async def all_callbacks(callback: CallbackQuery):
+@router.callback_query(F.data == "automation")
+async def automation_callback(callback: CallbackQuery):
     if not is_admin(callback):
         await callback.answer(
             "⛔ غير مصرح لك.",
@@ -32,128 +34,186 @@ async def all_callbacks(callback: CallbackQuery):
         )
         return
 
-    data = callback.data
+    users = muted_users()
 
-    if data == "automation":
-        users = muted_users()
+    await callback.message.edit_text(
+        "🧠 User Automation\n\n"
+        f"🔇 عدد المستخدمين المكتومين: {len(users)}",
+        reply_markup=automation_menu(),
+    )
 
-        await callback.message.edit_text(
-            "🧠 User Automation\n\n"
-            f"🔇 عدد المستخدمين المكتومين: {len(users)}",
-            reply_markup=automation_menu(),
+    await callback.answer()
+
+
+@router.callback_query(F.data == "mute_user")
+async def mute_user_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
         )
-
-        await callback.answer()
         return
 
-    if data == "mute_user":
-        waiting_for_mute.add(callback.from_user.id)
+    waiting_for_mute.add(callback.from_user.id)
 
-        await callback.message.edit_text(
-            "🔇 كتم مستخدم\n\n"
-            "أرسل Telegram ID للمستخدم الذي تريد كتمه.",
-            reply_markup=back_to_automation(),
+    await callback.message.edit_text(
+        "🔇 كتم مستخدم\n\n"
+        "أرسل Telegram ID للمستخدم الذي تريد كتمه.",
+        reply_markup=back_to_automation(),
+    )
+
+    await callback.answer()
+
+
+@router.callback_query(F.data == "unmute_user")
+async def unmute_user_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
         )
-
-        await callback.answer()
         return
 
-    if data == "unmute_user":
-        waiting_for_unmute.add(callback.from_user.id)
+    waiting_for_unmute.add(callback.from_user.id)
 
-        await callback.message.edit_text(
-            "🔊 إلغاء كتم\n\n"
-            "أرسل Telegram ID للمستخدم الذي تريد إلغاء كتمه.",
-            reply_markup=back_to_automation(),
+    await callback.message.edit_text(
+        "🔊 إلغاء كتم\n\n"
+        "أرسل Telegram ID للمستخدم الذي تريد إلغاء كتمه.",
+        reply_markup=back_to_automation(),
+    )
+
+    await callback.answer()
+
+
+@router.callback_query(F.data == "muted_list")
+async def muted_list_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
         )
-
-        await callback.answer()
         return
 
-    if data == "muted_list":
-        users = muted_users()
+    users = muted_users()
 
-        if not users:
-            text = (
-                "👥 المكتومون\n\n"
-                "لا يوجد مستخدمون مكتومون."
-            )
-        else:
-            lines = [
-                "👥 المكتومون",
-                "",
-            ]
-
-            for user in users:
-                name = user["display_name"] or "مستخدم"
-                username = user["username"]
-
-                if username:
-                    lines.append(f"🔇 {name} — @{username}")
-                else:
-                    lines.append(f"🔇 {name}")
-
-                lines.append(f"ID: {user['user_id']}")
-                lines.append("")
-
-            text = "\n".join(lines)
-
-        await callback.message.edit_text(
-            text,
-            reply_markup=back_to_automation(),
+    if not users:
+        text = (
+            "👥 المكتومون\n\n"
+            "لا يوجد مستخدمون مكتومون."
         )
+    else:
+        lines = [
+            "👥 المكتومون",
+            "",
+        ]
 
-        await callback.answer()
+        for user in users:
+            name = user["display_name"] or "مستخدم"
+            username = user["username"]
+
+            if username:
+                lines.append(f"🔇 {name} — @{username}")
+            else:
+                lines.append(f"🔇 {name}")
+
+            lines.append(f"ID: {user['user_id']}")
+            lines.append("")
+
+        text = "\n".join(lines)
+
+    await callback.message.edit_text(
+        text,
+        reply_markup=back_to_automation(),
+    )
+
+    await callback.answer()
+
+
+@router.callback_query(F.data == "private")
+async def private_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
+        )
         return
 
-    if data == "main_menu":
-        await callback.message.edit_text(
-            "🧠 أهلاً بك في Special\n\n"
-            "لوحة التحكم الرئيسية:",
-            reply_markup=main_menu(),
-        )
+    await callback.message.edit_text(
+        "📥 إدارة الخاص\n\n"
+        "من هنا تقدر تدخل إلى إدارة الكتم.",
+        reply_markup=private_menu(),
+    )
 
-        await callback.answer()
+    await callback.answer()
+
+
+@router.callback_query(F.data == "settings")
+async def settings_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
+        )
         return
 
-    if data == "private":
-        await callback.message.edit_text(
-            "📥 إدارة الخاص\n\n"
-            "هذه الوحدة سيتم ربط وظائفها لاحقًا.",
-            reply_markup=main_menu(),
-        )
+    await callback.message.edit_text(
+        "⚙️ الإعدادات\n\n"
+        "إعدادات User Automation:",
+        reply_markup=settings_menu(),
+    )
 
-        await callback.answer()
+    await callback.answer()
+
+
+@router.callback_query(F.data == "storage")
+async def storage_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
+        )
         return
 
-    if data == "storage":
-        await callback.message.edit_text(
-            "🗃 التخزين\n\n"
-            "قاعدة البيانات تعمل.",
-            reply_markup=main_menu(),
-        )
+    await callback.message.edit_text(
+        "🗃 التخزين\n\n"
+        "قاعدة البيانات تعمل.",
+        reply_markup=main_menu(),
+    )
 
-        await callback.answer()
+    await callback.answer()
+
+
+@router.callback_query(F.data == "protection")
+async def protection_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
+        )
         return
 
-    if data == "protection":
-        await callback.message.edit_text(
-            "🛡 الحماية\n\n"
-            "وحدة الحماية سيتم ربطها لاحقًا.",
-            reply_markup=main_menu(),
-        )
+    await callback.message.edit_text(
+        "🛡 الحماية\n\n"
+        "وحدة الحماية سيتم ربطها لاحقًا.",
+        reply_markup=main_menu(),
+    )
 
-        await callback.answer()
+    await callback.answer()
+
+
+@router.callback_query(F.data == "main_menu")
+async def main_menu_callback(callback: CallbackQuery):
+    if not is_admin(callback):
+        await callback.answer(
+            "⛔ غير مصرح لك.",
+            show_alert=True,
+        )
         return
 
-    if data == "settings":
-        await callback.message.edit_text(
-            "⚙️ الإعدادات\n\n"
-            "الإعدادات سيتم ربطها لاحقًا.",
-            reply_markup=main_menu(),
-        )
-
-        await callback.answer()
-        return
+    await callback.message.edit_text(
+        "🧠 أهلاً بك في Special\n\n"
+        "لوحة التحكم الرئيسية:",
+        reply_markup=main_menu(),
+    )
 
     await callback.answer()
