@@ -45,18 +45,54 @@ def automation_menu() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(
                     text="🔇 كتم مستخدم",
                     callback_data="mute_user",
-                )
-            ],
-            [
+                ),
                 InlineKeyboardButton(
                     text="🔊 إلغاء كتم",
                     callback_data="unmute_user",
-                )
+                ),
             ],
             [
                 InlineKeyboardButton(
                     text="👥 المكتومون",
                     callback_data="muted_list",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔙 رجوع",
+                    callback_data="main_menu",
+                )
+            ],
+        ]
+    )
+
+
+def private_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔇 إدارة الكتم",
+                    callback_data="automation",
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🔙 رجوع",
+                    callback_data="main_menu",
+                )
+            ],
+        ]
+    )
+
+
+def settings_menu() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="🔇 إعدادات الكتم",
+                    callback_data="automation",
                 )
             ],
             [
