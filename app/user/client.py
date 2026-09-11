@@ -13,10 +13,13 @@ client = TelegramClient("special_user", API_ID, API_HASH)
 
 @client.on(events.NewMessage)
 async def message_handler(event):
+    # نعمل على الخاص فقط حاليًا
     if not event.is_private:
         return
 
+    # ==============================
     # الرسائل التي يرسلها حسابك
+    # ==============================
     if event.out:
         text = (event.raw_text or "").strip()
 
@@ -36,6 +39,7 @@ async def message_handler(event):
                 return
 
             username = getattr(target, "username", None)
+
             display_name = (
                 getattr(target, "first_name", None)
                 or getattr(target, "title", None)
@@ -54,7 +58,9 @@ async def message_handler(event):
 
         return
 
+    # ==============================
     # الرسائل الواردة
+    # ==============================
     sender = await event.get_sender()
 
     if sender is None:
@@ -80,8 +86,19 @@ async def message_handler(event):
     else:
         print("المحتوى: رسالة بدون نص")
 
+    # ==============================
+    # فحص الكتم وحذف الرسالة
+    # ==============================
     if check_muted(user_id):
         print("🔇 المستخدم مكتوم.")
+
+        try:
+            await event.delete()
+            print("🗑 تم حذف الرسالة.")
+        except Exception as error:
+            print(f"⚠️ تعذر حذف الرسالة: {error}")
+
+        return
 
 
 async def main():
