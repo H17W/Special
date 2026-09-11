@@ -13,13 +13,10 @@ client = TelegramClient("special_user", API_ID, API_HASH)
 
 @client.on(events.NewMessage)
 async def message_handler(event):
-    # تجاهل رسائل المجموعات والقنوات حاليًا
     if not event.is_private:
         return
 
-    # ---------------------------------
-    # أوامر الحساب الشخصي
-    # ---------------------------------
+    # الرسائل التي يرسلها حسابك
     if event.out:
         text = (event.raw_text or "").strip()
 
@@ -55,44 +52,36 @@ async def message_handler(event):
             print(f"الاسم: {display_name}")
             print(f"ID: {target.id}")
 
-            return
+        return
 
-    # ---------------------------------
     # الرسائل الواردة
-    # ---------------------------------
-    if not event.out:
     sender = await event.get_sender()
 
+    if sender is None:
+        return
 
-        if sender is None:
-            return
+    user_id = sender.id
 
-        user_id = sender.id
+    name = (
+        getattr(sender, "first_name", None)
+        or getattr(sender, "title", None)
+        or "Unknown"
+    )
 
-        name = (
-            getattr(sender, "first_name", None)
-            or getattr(sender, "title", None)
-            or "Unknown"
-        )
+    username = getattr(sender, "username", None)
 
-        username = getattr(sender, "username", None)
+    print("\n📩 رسالة واردة")
+    print(f"الاسم: {name}")
+    print(f"Username: @{username}" if username else "Username: لا يوجد")
+    print(f"ID: {user_id}")
 
-        print("\n📩 رسالة واردة")
-        print(f"الاسم: {name}")
-        print(f"Username: @{username}" if username else "Username: لا يوجد")
-        print(f"ID: {user_id}")
+    if event.raw_text:
+        print(f"النص: {event.raw_text}")
+    else:
+        print("المحتوى: رسالة بدون نص")
 
-        if event.raw_text:
-            print(f"النص: {event.raw_text}")
-        else:
-            print("المحتوى: رسالة بدون نص")
-
-        # ---------------------------------
-        # فحص الكتم
-        # ---------------------------------
-        if check_muted(user_id):
-            print("🔇 المستخدم مكتوم.")
-            return
+    if check_muted(user_id):
+        print("🔇 المستخدم مكتوم.")
 
 
 async def main():
