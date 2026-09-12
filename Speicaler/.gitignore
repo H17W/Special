@@ -19,8 +19,8 @@ __pycache__/
 *.sqlite3
 
 # Runtime files
-storage/
-backups/
+Speicaler/storage/
+Speicaler/backups/
 
 # Logs
 *.log
