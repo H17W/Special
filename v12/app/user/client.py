@@ -1,4 +1,3 @@
-```python
 import asyncio
 import json
 import re
@@ -1027,4 +1026,3 @@ async def start_user_client():
     print(f"ID: {me.id}")
 
     await client.run_until_disconnected()
-```
