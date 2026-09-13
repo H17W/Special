@@ -1,0 +1,6 @@
+aiogram>=3.22,<4
+telethon>=1.45,<2
+python-dotenv>=1.1,<2
+google-genai>=2.23,<3
+
+mutagen>=1.47,<2
