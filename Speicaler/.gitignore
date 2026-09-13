@@ -1,0 +1,58 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Telegram sessions
+*.session
+*.session-journal
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Runtime data
+storage/
+backups/
+logs/
+
+# Cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Build
+build/
+dist/
+*.egg-info/
+
+# Secrets / credentials
+*.pem
+*.key
+secrets/
+credentials/
