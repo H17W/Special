@@ -1,0 +1,10 @@
+.env
+*.session
+*.session-journal
+__pycache__/
+*.pyc
+*.db
+*.sqlite
+*.sqlite3
+storage/
+backups/
