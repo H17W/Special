@@ -91,6 +91,12 @@ async def start_handler(message: Message):
     if get_setting("bot_paused", "0") == "1":
         return
     reset_access_attempts(uid)
+    if u:
+        try:
+            from app.core.database import update_allowed_user_identity
+            update_allowed_user_identity(uid, u.username, u.full_name)
+        except Exception:
+            pass
     try:
         # The developer account is already authenticated by the terminal-launched
         # Special User Automation session. Never ask the developer to log in again.
