@@ -777,11 +777,21 @@ async def access_list(c):
     buttons = []
     for r in rows[:50]:
         name = (r['display_name'] or '').strip()
-        if not name or name == str(r['user_id']):
-            name = 'مستخدم'
-        username = f" @{r['username']}" if r['username'] else ''
+        if not name or name == str(r['user_id']) or name == 'مستخدم':
+            try:
+                chat = await c.bot.get_chat(int(r['user_id']))
+                fetched_name = ' '.join(
+                    x for x in (getattr(chat, 'first_name', None), getattr(chat, 'last_name', None)) if x
+                ).strip()
+                if fetched_name:
+                    name = fetched_name
+                    update_allowed_user_identity(int(r['user_id']), getattr(chat, 'username', None), fetched_name)
+            except Exception:
+                pass
+        if not name or name == str(r['user_id']) or name == 'مستخدم':
+            name = str(r['user_id'])
         buttons.append([InlineKeyboardButton(
-            text=f"{'🟢' if r['status']=='active' else '🔴'} {name}{username} | 🆔 {r['user_id']}",
+            text=f"{'🟢' if r['status']=='active' else '🔴'} {name} | 🆔 {r['user_id']}",
             callback_data=f"access_user:{r['user_id']}"
         )])
     buttons.append([InlineKeyboardButton(text='🔙 رجوع', callback_data='access')])
@@ -864,9 +874,20 @@ async def feature_toggle(c):
 
 @router.callback_query(F.data.startswith('fpp:'))
 async def feature_page(c):
-    if await guard(c, owner_only=True):
-        _, uid, page = c.data.split(':'); await show(c, f"🛠️ صلاحيات الميزات\n\n👤 {get_allowed_user(int(uid))['display_name'] or uid}", feature_permissions_menu(int(uid), get_feature_permissions(int(uid)), int(page)))
-
+    if not await guard(c, owner_only=True):
+        return
+    _, uid, page = c.data.split(':')
+    uid = int(uid)
+    page = int(page)
+    r = get_allowed_user(uid)
+    if not r:
+        await c.answer('المستخدم غير موجود', show_alert=True)
+        return
+    await show(
+        c,
+        f"🛠️ صلاحيات الميزات\n\n👤 {r['display_name'] or uid}",
+        feature_permissions_menu(uid, get_feature_permissions(uid), page)
+    )
 
 @router.callback_query(F.data.startswith('fpa:'))
 async def feature_all(c):
