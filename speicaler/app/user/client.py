@@ -62,6 +62,17 @@ IMPORT_LOCK = asyncio.Lock()
 WATCHDOG_LOCK = asyncio.Lock()
 
 
+def _runtime_feature_enabled(key):
+    # Background handlers run under the currently selected bot user.
+    bot_uid = active_bot_user_id()
+    if not bot_uid or (ADMIN_ID and str(bot_uid) == str(ADMIN_ID)):
+        return True
+    row = get_allowed_user(int(bot_uid))
+    if not row or row["status"] != "active":
+        return False
+    return is_feature_enabled(int(bot_uid), key)
+
+
 def media_type(message):
     if not message or not message.media:
         return None
@@ -574,10 +585,12 @@ async def incoming(event):
         return
 
     if event.is_private:
+        if not _runtime_feature_enabled("private.people") and not _runtime_feature_enabled("automation.monitor"):
+            return
         name = getattr(sender, "first_name", None) or getattr(sender, "last_name", None) or "مستخدم"
         upsert_private_chat(sender.id, getattr(sender, "username", None), name, is_bot=False, is_deleted_user=getattr(sender, "deleted", False))
         ai_ok, ai_prompt = parse_request(event.raw_text)
-        if ai_ok and ai_prompt:
+        if ai_ok and ai_prompt and _runtime_feature_enabled("ai.trigger"):
             try:
                 answer = await ask_gemini(ai_prompt)
                 if answer:
@@ -587,14 +600,21 @@ async def incoming(event):
                 add_log("operation_log", "gemini_failed", f"{type(exc).__name__}: {exc}")
             return
 
-        inserted_id, inserted = insert_message_once(
-            event.id, sender.id, event.chat_id, "incoming", event.raw_text,
-            media_type(event.message), await archive_media(event, sender.id, "in") if event.message and event.message.media else None,
-            str(event.date)
-        )
-        if inserted:
-            increment_stats(sender.id, media_type(event.message), has_link(event.raw_text))
-        if check_muted(sender.id) or is_muted_in_chat(event.chat_id, sender.id):
+        inserted_id = None
+        inserted = False
+        if _runtime_feature_enabled("private.other_messages") or _runtime_feature_enabled("storage.text"):
+            media_path = None
+            if event.message and event.message.media and _runtime_feature_enabled("automation.save_media"):
+                media_path = await archive_media(event, sender.id, "in")
+            inserted_id, inserted = insert_message_once(
+                event.id, sender.id, event.chat_id, "incoming", event.raw_text,
+                media_type(event.message) if _runtime_feature_enabled("automation.save_messages") else None,
+                media_path,
+                str(event.date)
+            )
+            if inserted:
+                increment_stats(sender.id, media_type(event.message), has_link(event.raw_text))
+        if _runtime_feature_enabled("automation.mute") and (check_muted(sender.id) or is_muted_in_chat(event.chat_id, sender.id)):
             try:
                 await event.delete()
                 mark_message_deleted(event.id, event.chat_id)
@@ -624,7 +644,7 @@ async def incoming(event):
 @client.on(events.MessageEdited(incoming=True))
 async def incoming_edit(event):
     set_active_client(event.client, CLIENT_BOT_IDS.get(id(event.client), int(ADMIN_ID) if ADMIN_ID else None))
-    if not event.is_private:
+    if not event.is_private or not _runtime_feature_enabled("automation.edits"):
         return
     sender = await event.get_sender()
     if not sender or getattr(sender, "bot", False) or getattr(sender, "deleted", False):
@@ -640,6 +660,8 @@ async def incoming_edit(event):
 @client.on(events.MessageDeleted)
 async def deleted_event(event):
     set_active_client(event.client, CLIENT_BOT_IDS.get(id(event.client), int(ADMIN_ID) if ADMIN_ID else None))
+    if not _runtime_feature_enabled("automation.deleted_log"):
+        return
     # Telegram/Telethon does not provide a reliable private-chat peer for bare
     # delete updates. Do not infer a private deletion from message ID alone;
     # private deletions are audited per-chat below to avoid false notifications.
@@ -659,6 +681,8 @@ async def audit_recent_private_deletions(limit_chats=25, messages_per_chat=80):
     """Check stored incoming private messages chat-by-chat before notifying.
     This avoids false positives caused by Telegram delete updates without peer context.
     """
+    if not _runtime_feature_enabled("automation.deleted_log"):
+        return
     rows = list_private_chats()[:limit_chats]
     for person in rows:
         user_id = int(person["user_id"])
@@ -685,19 +709,19 @@ async def outgoing(event):
     text = (event.raw_text or "").strip()
     lower = text.lower()
 
-    if event.is_private:
+    if event.is_private and _runtime_feature_enabled("private.own_messages"):
         name = getattr(target, "first_name", None) or getattr(target, "last_name", None) or "مستخدم"
         upsert_private_chat(target.id, getattr(target, "username", None), name)
-        media_path = await archive_media(event, target.id, "out") if event.message and event.message.media else None
+        media_path = await archive_media(event, target.id, "out") if event.message and event.message.media and _runtime_feature_enabled("automation.save_media") else None
         inserted_id, inserted = insert_message_once(event.id, target.id, event.chat_id, "outgoing", event.raw_text, media_type(event.message), media_path, str(event.date))
         if inserted:
             increment_stats(target.id, media_type(event.message), has_link(event.raw_text))
-        if event.is_reply:
+        if event.is_reply and _runtime_feature_enabled("automation.save_media"):
             replied = await event.get_reply_message()
             if replied and replied.media:
                 await save_replied_media(event, replied, target)
 
-    if lower in {"/بداية الحذف", "بداية الحذف", "/بداية", "بداية"}:
+    if lower in {"/بداية الحذف", "بداية الحذف", "/بداية", "بداية"} and _runtime_feature_enabled("automation.monitor"):
         if not event.is_reply:
             await event.edit("❌ فشلت العملية يجب الرد على الرسالة للتحديد")
             return
@@ -709,7 +733,7 @@ async def outgoing(event):
         await event.edit("✅ تم تحديد بداية الحذف")
         return
 
-    if lower in {"/نهاية الحذف", "نهاية الحذف", "/نهاية", "نهاية"}:
+    if lower in {"/نهاية الحذف", "نهاية الحذف", "/نهاية", "نهاية"} and _runtime_feature_enabled("automation.monitor"):
         if not event.is_reply:
             await event.edit("❌ فشلت العملية يجب الرد على الرسالة للتحديد")
             return
@@ -739,7 +763,7 @@ async def outgoing(event):
         await active_client().send_message(event.chat_id, f"✅ تم مسح {count} رسالة")
         return
 
-    if lower in {"تحديث", "/تحديث", "reload", "/reload"}:
+    if lower in {"تحديث", "/تحديث", "reload", "/reload"} and _runtime_feature_enabled("automation.monitor"):
         try:
             result = await refresh_special()
             await event.edit("✅ تم تحديث البوت بنجاح")
@@ -748,7 +772,7 @@ async def outgoing(event):
             await event.edit(f"❌ تعذر تحديث البوت: {type(exc).__name__}")
         return
 
-    if lower in {"مهم", "حفظ مهم", "/مهم", "/حفظ_مهم"}:
+    if lower in {"مهم", "حفظ مهم", "/مهم", "/حفظ_مهم"} and _runtime_feature_enabled("important.add"):
         if not event.is_private or not event.is_reply:
             await event.edit("❌ فشلت العملية يجب استخدام الرد في الخاص لحفظ الرسالة كمهمة")
             return
@@ -762,7 +786,7 @@ async def outgoing(event):
         await event.edit("⭐ تم حفظ الرسالة كمهمة بنجاح")
         return
 
-    if lower in {"تقليد", "/تقليد"}:
+    if lower in {"تقليد", "/تقليد"} and _runtime_feature_enabled("automation.monitor"):
         target2 = await _resolve_target(event)
         if not target2:
             await event.edit("❌ فشلت العملية يجب الرد على المستخدم أو كتابة منشنه")
@@ -778,14 +802,16 @@ async def outgoing(event):
             await event.edit(f"❌ تعذر التقليد: {type(exc).__name__}")
         return
 
-    if lower in {"الغاء التقليد", "إلغاء التقليد", "/الغاء التقليد", "/إلغاء التقليد"}:
+    if lower in {"الغاء التقليد", "إلغاء التقليد", "/الغاء التقليد", "/إلغاء التقليد"} and _runtime_feature_enabled("automation.monitor"):
         try:
             await event.edit("✅ تم إلغاء التقليد واستعادة الحساب" if await restore_profile() else "ℹ️ ما فيه تقليد مفعّل حاليًا")
         except Exception as exc:
             await event.edit(f"❌ تعذر إلغاء التقليد: {type(exc).__name__}")
         return
 
-    handled = await handle_moderation_command(event, text)
+    handled = False
+    if _runtime_feature_enabled("automation.mute") or _runtime_feature_enabled("automation.unmute"):
+        handled = await handle_moderation_command(event, text)
     if handled:
         return
 
