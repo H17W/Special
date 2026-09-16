@@ -805,6 +805,18 @@ def get_allowed_user(user_id):
         return c.execute("SELECT * FROM allowed_users WHERE user_id=?", (user_id,)).fetchone()
 
 
+def update_allowed_user_identity(user_id, username=None, display_name=None):
+    with get_global_connection() as c:
+        current = c.execute("SELECT username,display_name FROM allowed_users WHERE user_id=?", (user_id,)).fetchone()
+        if not current:
+            return False
+        new_username = username if username is not None else current["username"]
+        new_name = display_name if display_name else current["display_name"]
+        c.execute("UPDATE allowed_users SET username=?, display_name=? WHERE user_id=?", (new_username, new_name, user_id))
+        c.commit()
+        return True
+
+
 def get_allowed_users():
     with get_global_connection() as c:
         return c.execute("SELECT * FROM allowed_users ORDER BY created_at DESC").fetchall()
